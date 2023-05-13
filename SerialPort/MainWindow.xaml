@@ -59,20 +59,20 @@
                         <Button x:Name="serial_open_button" Content="打开串口" VerticalAlignment="Center" Margin="0,10,0,0" Click="serial_open_button_Click"/>
                         <StackPanel Orientation="Horizontal" Margin="0,10,0,10">
                             <RadioButton x:Name="radio_hex" Content="显示十六进制" FontSize="14" GroupName="selectOut"/>
-                            <RadioButton x:Name="radio_string" Content="显示字符" FontSize="14" GroupName="selectOut"/>
+                            <RadioButton x:Name="radio_string" Content="显示字符" FontSize="14" IsChecked="True" GroupName="selectOut"/>
                         </StackPanel>
                         <DockPanel>
                             <Label Content="字符编码："  Style="{StaticResource myLable}"/>
                             <ComboBox x:Name="comboBox_encoding" VerticalAlignment="Center" HorizontalAlignment="Right" Width="100">
                                 <ComboBoxItem Content="UTF-8" IsSelected="True"/>
-                                <ComboBoxItem Content="ASCII-8"/>
-                                <ComboBoxItem Content="GBK"/>
+                                <ComboBoxItem Content="ASCII"/>
+                                <ComboBoxItem Content="GB2312"/>
                             </ComboBox>
                         </DockPanel>
                         <DockPanel>
                             <Label Content="换行符："  Style="{StaticResource myLable}"/>
                             <ComboBox x:Name="combobox_newline" VerticalAlignment="Center" HorizontalAlignment="Right" Width="100" SelectionChanged="combobox_newline_SelectionChanged">
-                                <ComboBoxItem Content="\r\n(CRLF)" IsSelected="True"/>
+                                <ComboBoxItem Content="\r\n(CRLF)"/>
                                 <ComboBoxItem Content="\r(CR)"/>
                                 <ComboBoxItem Content="\n(LF)"/>
                             </ComboBox>
@@ -85,6 +85,11 @@
                             <Label x:Name="send_count" DockPanel.Dock="Left" Content="0" FontWeight="Normal" Margin="0,0,200,0"/>
                             <Label DockPanel.Dock="Left" Content="接收:" FontWeight="Normal"/>
                             <Label x:Name="receive_count" DockPanel.Dock="Left" Content="0" FontWeight="Normal"/>
+                            <Label  FontWeight="Normal" MouseDown="Label_MouseDown_1" MouseEnter="Label_MouseEnter" MouseLeave="Label_MouseLeave" Foreground="#FF2B81D5" DockPanel.Dock="Right">
+                                <Label.Content>
+                                    <Underline>清空内容</Underline>
+                                </Label.Content>
+                            </Label>
                             <Label  FontWeight="Normal" HorizontalAlignment="Right" MouseDown="Label_MouseDown" MouseEnter="Label_MouseEnter" MouseLeave="Label_MouseLeave" Foreground="#FF2B81D5">
                                 <Label.Content>
                                     <Underline>复位计数</Underline>
@@ -98,6 +103,66 @@
                     </DockPanel>
                     <StackPanel/>
                     <StackPanel/>
+                </Grid>
+            </TabItem>
+            <TabItem Header="调参">
+                <Grid Background="{DynamicResource {x:Static SystemColors.MenuBrushKey}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition/>
+                        <RowDefinition/>
+                        <RowDefinition/>
+                        <RowDefinition/>
+                        <RowDefinition/>
+                    </Grid.RowDefinitions>
+                    <TextBox x:Name="textBox_Hex" Grid.Row="0" VerticalContentAlignment="Top"/>
+                    <GroupBox Header="速度PID" Grid.Row="1">
+                        <DockPanel LastChildFill="False"  HorizontalAlignment="Center">
+                            <Label Content="距离:" VerticalAlignment="Center"/>
+                            <TextBox x:Name="textBox_distance" TextWrapping="Wrap" Text="" Width="100" VerticalAlignment="Center"/>
+                            <Button x:Name="button_distance1" Content="发送" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20,0,0,0" Click="button_distance1_Click" />
+                            <Label Content="角度:" VerticalAlignment="Center" Margin="70,0,0,0"/>
+                            <TextBox x:Name="textBox_angle" TextWrapping="Wrap" Text="" Width="100" VerticalAlignment="Center"/>
+                            <Button x:Name="button_angel1" Content="发送" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20,0,0,0" Click="button_angel1_Click" />
+                            <Label Content="速度:" VerticalAlignment="Center" Margin="70,0,0,0"/>
+                            <TextBox x:Name="textBox_speed" TextWrapping="Wrap" Text="" Width="100" VerticalAlignment="Center"/>
+                            <Button x:Name="button_speed1" Content="发送" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20,0,0,0" Click="button_speed1_Click" />
+                        </DockPanel>
+                    </GroupBox>
+                    <GroupBox Header="速度PID" Grid.Row="2">
+                        <DockPanel LastChildFill="False"  HorizontalAlignment="Center">
+                            <Label Content="轮子:" VerticalAlignment="Center"/>
+                            <TextBox x:Name="textBox_wheel" TextWrapping="Wrap" Text="" Width="100" VerticalAlignment="Center"/>
+                            <Label Content="P:" VerticalAlignment="Center" Margin="70,0,0,0"/>
+                            <TextBox x:Name="textBox_speed_P" TextWrapping="Wrap" Text="" Width="100" VerticalAlignment="Center"/>
+                            <Label Content="I:" VerticalAlignment="Center" Margin="70,0,0,0"/>
+                            <TextBox x:Name="textBox_speed_I" TextWrapping="Wrap" Text="" Width="100" VerticalAlignment="Center"/>
+                            <Label Content="D:" VerticalAlignment="Center" Margin="70,0,0,0"/>
+                            <TextBox x:Name="textBox_speed_D" TextWrapping="Wrap" Text="" Width="100" VerticalAlignment="Center"/>
+                            <Button x:Name="button_speed" Content="发送" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20,0,0,0" Click="button_speed_Click" />
+                        </DockPanel>
+                    </GroupBox>
+                    <GroupBox Header="角度PID" Grid.Row="3">
+                        <DockPanel LastChildFill="False"  HorizontalAlignment="Center">
+                            <Label Content="P:" VerticalAlignment="Center"/>
+                            <TextBox x:Name="textBox_angle_P" TextWrapping="Wrap" Text="" Width="100" VerticalAlignment="Center"/>
+                            <Label Content="I:" VerticalAlignment="Center" Margin="70,0,0,0"/>
+                            <TextBox x:Name="textBox_angle_I" TextWrapping="Wrap" Text="" Width="100" VerticalAlignment="Center"/>
+                            <Label Content="D:" VerticalAlignment="Center" Margin="70,0,0,0"/>
+                            <TextBox x:Name="textBox_angle_D" TextWrapping="Wrap" Text="" Width="100" VerticalAlignment="Center"/>
+                            <Button x:Name="button_angle" Content="发送" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20,0,0,0" Click="button_angle_Click" />
+                        </DockPanel>
+                    </GroupBox>
+                    <GroupBox Header="距离PID" Grid.Row="4">
+                        <DockPanel LastChildFill="False"  HorizontalAlignment="Center">
+                            <Label Content="P:" VerticalAlignment="Center"/>
+                            <TextBox x:Name="textBox_disatance_P" TextWrapping="Wrap" Text="" Width="100" VerticalAlignment="Center"/>
+                            <Label Content="I:" VerticalAlignment="Center" Margin="70,0,0,0"/>
+                            <TextBox x:Name="textBox_disatance_I" TextWrapping="Wrap" Text="" Width="100" VerticalAlignment="Center"/>
+                            <Label Content="D:" VerticalAlignment="Center" Margin="70,0,0,0"/>
+                            <TextBox x:Name="textBox_disatance_D" TextWrapping="Wrap" Text="" Width="100" VerticalAlignment="Center"/>
+                            <Button x:Name="button_distance" Content="发送" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20,0,0,0" Click="button_distance_Click" />
+                        </DockPanel>
+                    </GroupBox>
                 </Grid>
             </TabItem>
             <TabItem Header="图表">
