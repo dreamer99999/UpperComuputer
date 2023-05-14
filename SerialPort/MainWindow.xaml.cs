@@ -1,26 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.IO;
+using System.IO.Ports;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Web.UI.WebControls;
+using System.Web.UI.WebControls.WebParts;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using System.IO.Ports;
-using System.Runtime.Serialization;
-using ScottPlot;
-using System.Data;
-using System.IO;
-using System.Web.UI.WebControls;
-using ScottPlot.Drawing.Colormaps;
-using System.Collections;
-using System.Threading;
 
 namespace UpperComputer
 {
@@ -30,6 +19,8 @@ namespace UpperComputer
     public partial class MainWindow : Window
     {
         private System.IO.Ports.SerialPort serialPort = null;
+        private System.IO.Ports.SerialPort serialPortVirtual = null;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -40,7 +31,8 @@ namespace UpperComputer
             ComboBoxStopBits.ItemsSource = Enum.GetValues(typeof(StopBits));
             ComboBoxStopBits.SelectedIndex = 1;
             textBox_out.Text = "";
-
+            textBox_in.AcceptsReturn = true;
+            textBox_in.TextWrapping = TextWrapping.Wrap;
             double[] dataX = new double[100];
             double[] dataY = new double[100];
             Random random = new Random();
@@ -52,22 +44,17 @@ namespace UpperComputer
             WpfPlot1.Plot.AddScatter(dataX, dataY);
             WpfPlot1.Refresh();
         }
-        /// <summary>
-        /// 获取所有的串口名称
-        /// </summary>
-        public void GetPortNames()
+
+        private void ComboBoxPorts_DropDownOpened(object sender, EventArgs e)
         {
+            ComboBox comboBox = sender as ComboBox;
             string[] PortNames = System.IO.Ports.SerialPort.GetPortNames();
-            ComboBoxPorts.Items.Clear();
+            comboBox.Items.Clear();
 
             foreach (string PortName in PortNames)
             {
-                ComboBoxPorts.Items.Add(PortName);
+                comboBox.Items.Add(PortName);
             }
-        }
-        private void ComboBoxPorts_DropDownOpened(object sender, EventArgs e)
-        {
-            GetPortNames();
         }
 
         private void Label_MouseDown(object sender, MouseButtonEventArgs e)
@@ -86,118 +73,118 @@ namespace UpperComputer
 
         private void SendData(string data)
         {
-            if (serialPort != null && serialPort.IsOpen)
+            if (serialPort == null || !serialPort.IsOpen)
             {
-                byte[] byteData = null;
-                switch (comboBox_encoding.Text)
-                {
-                    case "UTF-8":
-                        byteData = Encoding.UTF8.GetBytes(data);
-                        break;
-                    case "GBK":
-                        byteData = Encoding.GetEncoding("GBK").GetBytes(data);
-                        break;
-                    case "ASCII":
-                        byteData = Encoding.ASCII.GetBytes(data);
-                        break;
-                }
-                // 将字符串转换为字节数组
-                // 发送数据到串口
-                if (byteData != null && byteData.Length == Encoding.Default.GetByteCount(data))
-                {
-                    serialPort.Write(byteData, 0, byteData.Length);
-
-                }
+                return;
             }
+
+            string encodingName = comboBox_encoding.Text;
+            byte[] byteData = Encoding.GetEncoding(encodingName).GetBytes(data);
+
+            // 发送数据到串口
+            serialPort.Write(byteData, 0, byteData.Length);
         }
 
-        private void serial_open_button_Click(object sender, RoutedEventArgs e)
+
+        private async void serial_open_button_Click(object sender, RoutedEventArgs e)
         {
-            System.Windows.Controls.Button button = sender as System.Windows.Controls.Button;
-            string portName = null;
-            if (ComboBoxPorts.SelectedItem == null)
+            var button = sender as System.Windows.Controls.Button;
+            var portName = ComboBoxPorts.SelectedItem?.ToString();
+            if (string.IsNullOrEmpty(portName))
             {
                 MessageBox.Show("未选择串口号！");
                 return;
             }
+
+            var baudRate = Convert.ToInt32((ComboBoxBauds.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "9600");
+            var dataBits = Convert.ToInt32((ComboBoxDataBits.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "8");
+            var parity = (Parity)ComboBoxParity.SelectedIndex;
+            var stopBits = (StopBits)ComboBoxStopBits.SelectedIndex;
+
+            if (serialPort == null)
+            {
+                serialPort = new System.IO.Ports.SerialPort(portName, baudRate, parity, dataBits, stopBits)
+                {
+                    ReadTimeout = 5000,
+                    WriteTimeout = 5000,
+                    ReceivedBytesThreshold = 1
+                };
+
+                serialPort.DataReceived += port_DataReceived;
+
+                try
+                {
+                    await Task.Run(() => serialPort.Open());
+                    button.Content = "关闭串口";
+                }
+                catch (IOException ex)
+                {
+                    MessageBox.Show("串口操作错误：" + ex.Message);
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    MessageBox.Show("串口访问被拒绝：" + ex.Message);
+                }
+            }
             else
             {
-                portName = ComboBoxPorts.SelectedItem as string;
-            }
-            int baudRate = Convert.ToInt32((ComboBoxBauds.SelectedItem as ComboBoxItem).Content.ToString());
-            int dataBits = Convert.ToInt32((ComboBoxDataBits.SelectedItem as ComboBoxItem).Content.ToString());
-            Parity parity = (Parity)ComboBoxParity.SelectedIndex;
-            StopBits stopBits = (StopBits)ComboBoxStopBits.SelectedIndex;
-
-            try
-            {
-                if (serialPort == null)
+                try
                 {
-                    serialPort = new System.IO.Ports.SerialPort(portName, baudRate, parity, dataBits, stopBits);
-
-                    serialPort.ReadTimeout = 5000;
-                    serialPort.WriteTimeout = 5000;
-                    serialPort.ReceivedBytesThreshold = 1;
-                    serialPort.DataReceived += new System.IO.Ports.SerialDataReceivedEventHandler(port_DataReceived);
-                    try
+                    await Task.Run(() =>
                     {
-                        serialPort.Open();
-                        button.Content = "关闭串口";
-                    }
-                    catch (IOException ex)
-                    {
-                        MessageBox.Show(ex.Message);
-                    }
-                }
-                else
-                {
-                    serialPort.Close();
-                    serialPort = null;
+                        serialPort.Close();
+                        serialPort.Dispose();
+                        serialPort = null;
+                    });
                     button.Content = "打开串口";
                 }
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                MessageBox.Show(ex.Message);
-            }
-            catch (InvalidOperationException ex)
-            {
-                MessageBox.Show(ex.Message);
+                catch (IOException ex)
+                {
+                    MessageBox.Show("串口操作错误：" + ex.Message);
+                }
             }
         }
+        private byte[] receiveBuffer = new byte[4096];
+        private Encoding receiveEncoding;
+
         void port_DataReceived(object sender, System.IO.Ports.SerialDataReceivedEventArgs e)
         {
             int nRead = serialPort.BytesToRead;
             if (nRead > 0)
             {
-                byte[] data = new byte[nRead];
-                serialPort.Read(data, 0, nRead);
                 // 在UI线程上更新计数器和文本框内容
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
+                    int receiveCount = Convert.ToInt32(receive_count.Content);
+                    int bytesRead = 0;
+                    receive_count.Content = receiveCount + 1;
+                    try
+                    {
+                        bytesRead = serialPort.Read(receiveBuffer, 0, nRead);
+                        if (data_forward.IsChecked==true && serialPortVirtual!=null && serialPortVirtual.IsOpen)
+                        {
+                            serialPortVirtual.Write(receiveBuffer, 0, bytesRead);
+                        }
+                    }
+                    catch (TimeoutException ex)
+                    {
+                        MessageBox.Show(ex.Message);
+                    }
+                    if (receiveEncoding == null || receiveEncoding.EncodingName != comboBox_encoding.Text)
+                    {
+                        receiveEncoding = Encoding.GetEncoding(comboBox_encoding.Text);
+                    }
                     if (radio_hex.IsChecked == true)
                     {
-                        for (int i = 0; i < data.Length; i++)
+                        for (int i = 0; i < bytesRead; i++)
                         {
-                            textBox_out.AppendText(string.Format("{0:X2} ", data[i]));
+                            textBox_out.AppendText(string.Format("{0:X2} ", receiveBuffer[i]));
                         }
                     }
                     else if (radio_string.IsChecked == true)
                     {
-                        switch (comboBox_encoding.Text)
-                        {
-                            case "UTF-8":
-                                textBox_out.AppendText(Encoding.UTF8.GetString(data));
-                                break;
-                            case "GB2312":
-                                textBox_out.AppendText(Encoding.GetEncoding("GB2312").GetString(data));
-                                break;
-                            case "ASCII":
-                                textBox_out.AppendText(Encoding.ASCII.GetString(data));
-                                break;
-                        }
+                        textBox_out.AppendText(receiveEncoding.GetString(receiveBuffer, 0, bytesRead));
                     }
-                    receive_count.Content = Convert.ToInt32(receive_count.Content) + 1;
                 }));
             }
         }
@@ -248,8 +235,8 @@ namespace UpperComputer
             }
             return checksum;
         }
-        // 发送自定义帧
-        public void SendFrame(byte func_code, byte[] data, int data_len)
+        /// 发送自定义帧
+        public async Task SendFrameAsync(byte func_code, byte[] data, int data_len)
         {
             // 计算帧长和校验和
             byte frame_len = (byte)(1 + 1 + 1 + data_len + 1 + 1); // 帧头 + 帧长 + 功能码 + 数据 + 校验和 + 帧尾
@@ -267,12 +254,16 @@ namespace UpperComputer
             }
             frame[index++] = checksum;     // 校验和
             frame[index++] = FRAME_FOOTER; // 帧尾
-            foreach (byte b in frame)
+            Dispatcher.Invoke(new Action(() =>
             {
-                textBox_Hex.Text += b.ToString("X2"); // 将每个字节转换为两位大写十六进制表示的字符串
-                textBox_Hex.Text += " ";
-            }
-            textBox_Hex.Text += "\n";
+                foreach (byte b in frame)
+                {
+                    textBox_Hex.Text += b.ToString("X2"); // 将每个字节转换为两位大写十六进制表示的字符串
+                    textBox_Hex.Text += " ";
+                }
+                textBox_Hex.Text += "\n";
+            }));
+
             // 发送帧到串口
             int length = frame.Length;
             int sendBytesNum = length / 4 * 4; // 每四个字节发送一次，计算需要发送的字节数
@@ -282,19 +273,24 @@ namespace UpperComputer
             {
                 Array.Copy(frame, j, tempBytes, 0, 4); // 每次取出四个字节
                 serialPort.Write(tempBytes, 0, 4); // 发送四个字节
-                Thread.Sleep(200);
+                await Task.Delay(200);
             }
             if (j < length)
             {
                 Array.Copy(frame, j, tempBytes, 0, length - j); // 取出剩余不足四个字节的数据
                 serialPort.Write(tempBytes, 0, length - j); // 发送不足四个字节的数据
-                Thread.Sleep(200);
-
+                await Task.Delay(200);
             }
         }
 
-        private void button_speed_Click(object sender, RoutedEventArgs e)
+
+        private async void button_speed_Click(object sender, RoutedEventArgs e)
         {
+            if (string.IsNullOrEmpty(textBox_wheel.Text) && string.IsNullOrEmpty(textBox_speed_P.Text) && string.IsNullOrEmpty(textBox_speed_I.Text) && string.IsNullOrEmpty(textBox_speed_D.Text))
+            {
+                MessageBox.Show("值未输入完全");
+                return;
+            }
             byte wheelValue = byte.Parse(textBox_wheel.Text);
             float pValue = float.Parse(textBox_speed_P.Text);
             float iValue = float.Parse(textBox_speed_I.Text);
@@ -314,7 +310,7 @@ namespace UpperComputer
             Array.Copy(dBytes, 0, resultBytes, index, dBytes.Length);
             if(serialPort != null && serialPort.IsOpen)
             {
-                SendFrame(0x03, resultBytes, resultBytes.Length);
+                await Task.Run(()=> SendFrameAsync(0x03, resultBytes, resultBytes.Length));
             }
             else
             {
@@ -322,8 +318,13 @@ namespace UpperComputer
             }
         }
 
-        private void button_angle_Click(object sender, RoutedEventArgs e)
+        private async void button_angle_Click(object sender, RoutedEventArgs e)
         {
+            if (string.IsNullOrEmpty(textBox_angle_P.Text) && string.IsNullOrEmpty(textBox_angle_I.Text) && string.IsNullOrEmpty(textBox_angle_D.Text))
+            {
+                MessageBox.Show("值未输入完全");
+                return;
+            }
 
             float pValue = float.Parse(textBox_angle_P.Text);
             float iValue = float.Parse(textBox_angle_I.Text);
@@ -342,7 +343,7 @@ namespace UpperComputer
             Array.Copy(dBytes, 0, resultBytes, index, dBytes.Length);
             if (serialPort != null && serialPort.IsOpen)
             {
-                SendFrame(0x04, resultBytes, resultBytes.Length);
+                await Task.Run(() => SendFrameAsync(0x04, resultBytes, resultBytes.Length));
             }
             else
             {
@@ -351,8 +352,13 @@ namespace UpperComputer
 
         }
 
-        private void button_distance_Click(object sender, RoutedEventArgs e)
+        private async void button_distance_Click(object sender, RoutedEventArgs e)
         {
+            if (string.IsNullOrEmpty(textBox_disatance_P.Text) && string.IsNullOrEmpty(textBox_disatance_I.Text) && string.IsNullOrEmpty(textBox_disatance_D.Text))
+            {
+                MessageBox.Show("值未输入完全");
+                return;
+            }
 
             float pValue = float.Parse(textBox_disatance_P.Text);
             float iValue = float.Parse(textBox_disatance_I.Text);
@@ -371,7 +377,7 @@ namespace UpperComputer
             Array.Copy(dBytes, 0, resultBytes, index, dBytes.Length);
             if (serialPort != null && serialPort.IsOpen)
             {
-                SendFrame(0x05, resultBytes, resultBytes.Length);
+                await Task.Run(() => SendFrameAsync(0x05, resultBytes, resultBytes.Length));
             }
             else
             {
@@ -379,13 +385,18 @@ namespace UpperComputer
             }
         }
 
-        private void button_distance1_Click(object sender, RoutedEventArgs e)
+        private async void button_distance1_Click(object sender, RoutedEventArgs e)
         {
+            if (string.IsNullOrEmpty(textBox_distance.Text))
+            {
+                MessageBox.Show("请输入距离值");
+                return;
+            }
             float distance_f = float.Parse(textBox_distance.Text);
             byte[] dBytes = BitConverter.GetBytes(distance_f);
             if (serialPort != null && serialPort.IsOpen)
             {
-                SendFrame(0x06, dBytes, dBytes.Length);
+                await Task.Run(() => SendFrameAsync(0x06, dBytes, dBytes.Length));
             }
             else
             {
@@ -393,13 +404,18 @@ namespace UpperComputer
             }
         }
 
-        private void button_angel1_Click(object sender, RoutedEventArgs e)
+        private async void button_angel1_Click(object sender, RoutedEventArgs e)
         {
+            if (string.IsNullOrEmpty(textBox_angle.Text))
+            {
+                MessageBox.Show("请输入角度值");
+                return;
+            }
             float angle_f = float.Parse(textBox_angle.Text);
             byte[] aBytes = BitConverter.GetBytes(angle_f);
             if (serialPort != null && serialPort.IsOpen)
             {
-                SendFrame(0x07, aBytes, aBytes.Length);
+                await Task.Run(() => SendFrameAsync(0x07, aBytes, aBytes.Length));
             }
             else
             {
@@ -407,17 +423,97 @@ namespace UpperComputer
             }
         }
 
-        private void button_speed1_Click(object sender, RoutedEventArgs e)
+        private async void button_speed1_Click(object sender, RoutedEventArgs e)
         {
+            if (string.IsNullOrEmpty(textBox_speed.Text))
+            {
+                MessageBox.Show("请输入速度值");
+                return;
+            }
             float speed_f = float.Parse(textBox_speed.Text);
             byte[] sBytes = BitConverter.GetBytes(speed_f);
             if (serialPort != null && serialPort.IsOpen)
             {
-                SendFrame(0x08, sBytes, sBytes.Length);
+                await Task.Run(()=> SendFrameAsync(0x08, sBytes, sBytes.Length));
             }
             else
             {
                 MessageBox.Show("未打开串口");
+            }
+        }
+        private const int MaxTextBoxLines = 200;
+        private bool _scrollToEnd = true;
+        private void textBox_out_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_scrollToEnd)
+            {
+                textBox_out.ScrollToEnd();
+            }
+            if (textBox_out.LineCount > 200)
+            {
+                int index = textBox_out.GetCharacterIndexFromLineIndex(200);
+                textBox_out.Text = textBox_out.Text.Remove(0, index);
+            }
+        }
+
+        private void textBox_out_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _scrollToEnd = false;
+        }
+
+        private void textBox_out_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            _scrollToEnd = true;
+        }
+
+
+        private async void data_forward_Checked(object sender, RoutedEventArgs e)
+        {
+            if (serialPort == null || !serialPort.IsOpen)
+            {
+                data_forward.IsChecked = false;
+                return;
+            }
+            serialPortVirtual = new System.IO.Ports.SerialPort(ComboBoxVirtualPorts.Text, Convert.ToInt32(ComboBoxVirtualBauds.Text), Parity.None, 8, StopBits.One)
+            {
+                ReadTimeout = 5000,
+                WriteTimeout = 5000,
+                ReceivedBytesThreshold = 1
+            };
+
+            serialPortVirtual.DataReceived += port_DataReceived;
+
+            try
+            {
+                await Task.Run(() => serialPortVirtual.Open());
+            }
+            catch (IOException ex)
+            {
+                MessageBox.Show("虚拟串口操作错误：" + ex.Message);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                MessageBox.Show("虚拟串口访问被拒绝：" + ex.Message);
+            }
+        }
+
+        private async void data_forward_Unchecked(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                await Task.Run(() =>
+                {
+                    if (serialPortVirtual != null && serialPortVirtual.IsOpen)
+                    {
+                        serialPortVirtual.Close();
+                        serialPortVirtual.Dispose();
+                        serialPortVirtual = null;
+                    }
+                });
+            }
+            catch (IOException ex)
+            {
+                MessageBox.Show("串口操作错误：" + ex.Message);
             }
         }
     }

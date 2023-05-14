@@ -28,12 +28,12 @@
                         <DockPanel>
                             <Label Content="波特率："  Style="{StaticResource myLable}"/>
                             <ComboBox x:Name="ComboBoxBauds" VerticalAlignment="Center" HorizontalAlignment="Right" Width="100">
-                                <ComboBoxItem Content="115200" IsSelected="True"/>
+                                <ComboBoxItem Content="115200" />
                                 <ComboBoxItem Content="76800"/>
                                 <ComboBoxItem Content="57600"/>
                                 <ComboBoxItem Content="38400"/>
                                 <ComboBoxItem Content="19200"/>
-                                <ComboBoxItem Content="9600"/>
+                                <ComboBoxItem Content="9600" IsSelected="True"/>
                                 <ComboBoxItem Content="4800"/>
                                 <ComboBoxItem Content="2400"/>
                                 <ComboBoxItem Content="1200"/>
@@ -64,9 +64,9 @@
                         <DockPanel>
                             <Label Content="字符编码："  Style="{StaticResource myLable}"/>
                             <ComboBox x:Name="comboBox_encoding" VerticalAlignment="Center" HorizontalAlignment="Right" Width="100">
-                                <ComboBoxItem Content="UTF-8" IsSelected="True"/>
+                                <ComboBoxItem Content="UTF-8" />
                                 <ComboBoxItem Content="ASCII"/>
-                                <ComboBoxItem Content="GB2312"/>
+                                <ComboBoxItem Content="GB2312" IsSelected="True"/>
                             </ComboBox>
                         </DockPanel>
                         <DockPanel>
@@ -77,9 +77,32 @@
                                 <ComboBoxItem Content="\n(LF)"/>
                             </ComboBox>
                         </DockPanel>
+                        <DockPanel>
+                            <Label Content="串口号：" Style="{StaticResource myLable}"/>
+                            <ComboBox x:Name="ComboBoxVirtualPorts" VerticalAlignment="Center" DropDownOpened="ComboBoxPorts_DropDownOpened" HorizontalAlignment="Right" Width="100" >
+                            </ComboBox>
+                        </DockPanel>
+                        <DockPanel>
+                            <Label Content="波特率："  Style="{StaticResource myLable}"/>
+                            <ComboBox x:Name="ComboBoxVirtualBauds" VerticalAlignment="Center" HorizontalAlignment="Right" Width="100">
+                                <ComboBoxItem Content="115200" />
+                                <ComboBoxItem Content="76800"/>
+                                <ComboBoxItem Content="57600"/>
+                                <ComboBoxItem Content="38400"/>
+                                <ComboBoxItem Content="19200"/>
+                                <ComboBoxItem Content="9600" IsSelected="True"/>
+                                <ComboBoxItem Content="4800"/>
+                                <ComboBoxItem Content="2400"/>
+                                <ComboBoxItem Content="1200"/>
+                            </ComboBox>
+                        </DockPanel>
+                        <DockPanel>
+                            <CheckBox x:Name="data_forward" Content="数据转发" FontSize="14" IsChecked="False" HorizontalAlignment="Center" Checked="data_forward_Checked" VerticalAlignment="Center" Unchecked="data_forward_Unchecked"/>
+                        </DockPanel>
                     </StackPanel>
                     <DockPanel Grid.Column="1">
-                        <TextBox x:Name="textBox_out" DockPanel.Dock="Top" TextWrapping="Wrap" Margin="5,0,5,0" Height="400"  IsReadOnly="True" VerticalContentAlignment="Top"/>
+                        <TextBox x:Name="textBox_out" MaxLines="200" DockPanel.Dock="Top" TextWrapping="Wrap" Margin="5,0,5,0" Height="400" IsReadOnly="True" VerticalContentAlignment="Top" VerticalScrollBarVisibility="Auto" TextChanged="textBox_out_TextChanged" PreviewMouseLeftButtonDown="textBox_out_PreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="textBox_out_PreviewMouseLeftButtonUp"/>
+
                         <DockPanel DockPanel.Dock="Bottom"  Margin="5,0,5,0">
                             <Label DockPanel.Dock="Left" Content="发送：" FontWeight="Normal"/>
                             <Label x:Name="send_count" DockPanel.Dock="Left" Content="0" FontWeight="Normal" Margin="0,0,200,0"/>
